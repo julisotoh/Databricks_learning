@@ -12,5 +12,5 @@ AWS S3 → Databricks → Bronze → Silver → Gold → Machine Learning → Ta
 
 - [Databricks CLI + AWS S3 Setup](AWS_Databricks.md)
 - [Medallion Architecture](Medallion_Architecture.md)
-- [Machine Learning - Feature](Machine_Learning.md)
+- [Machine Learning - Feature](Machine_Learning_feature.md)
 - Tableau
