@@ -5,9 +5,7 @@
 This documentation is based on what I learned about Principal Component
 Analysis (PCA) and how I applied those concepts using PySpark and Databricks.
 
-My goal is to document PCA in a simple and practical way: what it is,
-how Principal Components work, how to apply PCA, and how to evaluate the
-result using explained variance.
+My goal is to document PCA in a simple and practical way: what it is, how Principal Components work, how to apply PCA, and how to evaluate the result using explained variance.
 
 This document continues from the Feature Engineering process:
 
@@ -29,8 +27,7 @@ pca_features
 
 PCA stands for **Principal Component Analysis**.
 
-It is a dimensionality reduction technique used when we have multiple
-features and want to represent them using fewer dimensions.
+It is a dimensionality reduction technique used when we have multiple features and want to represent them using fewer dimensions.
 
 For example, imagine that after Feature Engineering I have:
 
@@ -50,8 +47,7 @@ PCA can create a smaller representation:
 PC1  PC2  PC3
 ```
 
-Instead of representing each record using 16 dimensions, I can represent
-it using 3 new dimensions called **Principal Components**.
+Instead of representing each record using 16 dimensions, I can represent it using 3 new dimensions called **Principal Components**.
 
 A simple way I understand PCA is:
 
@@ -63,18 +59,15 @@ Many Features
 Fewer Dimensions
 ```
 
-However, reducing dimensions also means that some of the original
-variability can be lost.
+However, reducing dimensions also means that some of the original variability can be lost.
 
-For this reason, after applying PCA, I need to evaluate how much variability
-is represented by the Principal Components.
+For this reason, after applying PCA, I need to evaluate how much variability is represented by the Principal Components.
 
 ---
 
 ## PCA is Not Feature Selection
 
-One of the most important things I learned is that PCA does **not** simply
-select the best original features.
+One of the most important things I learned is that PCA does **not** simply select the best original features.
 
 For example, if I have:
 
@@ -114,24 +107,24 @@ So:
 ```text
 Feature Selection
       ↓
-Keeps some of the original features
+Keeps some of the
+original features
 
 
 PCA
       ↓
-Creates new components from the original features
+Creates new components
+from the original features
 ```
 
-This distinction helped me understand why PCA is considered a
-**dimensionality reduction technique** rather than simply a feature
+This distinction helped me understand why PCA is considered a **dimensionality reduction technique** rather than simply a feature
 selection technique.
 
 ---
 
 ## Understanding Principal Components
 
-A **Principal Component** is a new variable created mathematically from
-the original features.
+A **Principal Component** is a new variable created mathematically from the original features.
 
 The components are usually called:
 
@@ -267,6 +260,103 @@ features_scaled
 
 ---
 
+## How Many Principal Components Should I Use?
+
+When I started working with PCA, one of the first questions I had was:
+
+> If I have 16 features, how do I know how many Principal Components I should keep?
+
+The purpose of PCA is to reduce dimensionality, but reducing the number of dimensions also means deciding how much of the original variability I am willing to leave outside the reduced representation.
+
+For example:
+
+```text
+16 Original Features
+        ↓
+       PCA
+        ↓
+How many components?
+
+1?
+2?
+3?
+4?
+5?
+...
+```
+
+If I keep many components, I may preserve more variability, but the dimensionality reduction will be smaller.
+
+If I keep very few components, I reduce the dimensionality more, but I may lose more of the original variability.
+
+Conceptually:
+
+```text
+More Components
+      ↓
+More Variability Represented
+      ↓
+Less Dimensionality Reduction
+```
+
+while:
+
+```text
+Fewer Components
+      ↓
+More Dimensionality Reduction
+      ↓
+Potentially More Variability Lost
+```
+
+This helped me understand that there is no universal rule saying that PCA should always use two, three, or any specific number of components.
+
+In PySpark, I define the number of components using `k`.
+
+For example:
+
+```python
+PCA(k=3)
+```
+
+means that I am asking PCA to create three Principal Components.
+
+An important distinction is:
+
+```text
+I choose how many components I want
+             ↓
+             k
+
+PCA determines how those components should be mathematically constructed
+```
+
+So `k=3` does **not** mean that PCA automatically discovered that three components were the optimal number.
+
+A practical way to evaluate the decision is:
+
+```text
+Choose k
+   ↓
+Apply PCA
+   ↓
+Check Explained Variance
+   ↓
+Check Cumulative Explained Variance
+   ↓
+Evaluate the Result
+```
+
+In my implementation, I configured:
+
+```text
+k = 3
+```
+
+I then evaluated the explained variance to understand how much of the original variability was represented by those three components.
+
+---
+
 ## Loading the Prepared Features
 
 In my implementation, I saved the prepared features as a Delta table during the previous stage.
@@ -281,17 +371,13 @@ import matplotlib.pyplot as plt
 
 spark = SparkSession.builder.getOrCreate()
 
-df_features = spark.table(
-    "mart_myproject.ml_features"
-)
+df_features = spark.table("mart_myproject.ml_features")
 ```
 
 I can inspect the input vector:
 
 ```python
-df_features.select(
-    "features_scaled"
-).show(3, truncate=False)
+df_features.select("features_scaled").show(3, truncate=False)
 ```
 
 At this point:
@@ -358,16 +444,63 @@ pca_features
 [PC1, PC2, PC3]
 ```
 
-An important thing I learned here is that `k=3` does **not** mean PCA
-automatically decided that three components were optimal.
-
-I configured PCA to create three components.
-
 ---
 
-## Understanding `fit()` and `transform()`
+## Why Do We Use `fit()` and `transform()`?
 
-After configuring PCA, I fit the model:
+When I first used PCA, I also wanted to understand why the process required
+two operations:
+
+```python
+fit()
+```
+
+and:
+
+```python
+transform()
+```
+
+The simplest way I understand the difference is:
+
+```text
+fit()
+  ↓
+Learn from the data
+
+
+transform()
+  ↓
+Apply what was learned
+```
+
+### `fit()`
+
+When I create PCA:
+
+```python
+pca = PCA(
+    k=3,
+    inputCol="features_scaled",
+    outputCol="pca_features"
+)
+```
+
+I have configured how I want PCA to work, but PCA has not yet analyzed the data.
+
+At this point, I have defined:
+
+```text
+Use PCA
+   ↓
+Create 3 components
+   ↓
+Read features_scaled
+   ↓
+Create pca_features
+```
+
+Then I use:
 
 ```python
 pca_model = pca.fit(
@@ -375,7 +508,45 @@ pca_model = pca.fit(
 )
 ```
 
-Then I transform the dataset:
+During `fit()`, PCA analyzes the input data and learns how the Principal Components should be constructed.
+
+Conceptually:
+
+```text
+features_scaled
+       ↓
+      fit()
+       ↓
+Analyze the variability
+in the data
+       ↓
+Learn the Principal
+Component directions
+       ↓
+pca_model
+```
+
+This helped me understand the difference between:
+
+```text
+pca
+```
+
+and:
+
+```text
+pca_model
+```
+
+`pca` contains the PCA configuration.
+
+`pca_model` contains the PCA transformation learned from the data.
+
+---
+
+### `transform()`
+
+Once PCA has learned how to construct the Principal Components, I can apply that transformation to the records:
 
 ```python
 df_pca = pca_model.transform(
@@ -383,24 +554,24 @@ df_pca = pca_model.transform(
 )
 ```
 
-I understand these two operations as:
+`transform()` takes each record and represents it using the Principal Components learned during `fit()`.
+
+Conceptually:
 
 ```text
-fit()
-  ↓
-Analyze the data
-  ↓
-Learn how the Principal Components should be constructed
-```
+Original Representation
 
-and:
+[f1, f2, f3, ... f16]
 
-```text
-transform()
-  ↓
-Use the learned transformation
-  ↓
-Represent each record using the Principal Components
+          ↓
+     pca_model
+          ↓
+     transform()
+          ↓
+
+New Representation
+
+[PC1, PC2, PC3]
 ```
 
 After `transform()`, PySpark creates the new column:
@@ -409,7 +580,129 @@ After `transform()`, PySpark creates the new column:
 pca_features
 ```
 
-which contains the new PCA representation for each record.
+So I remember the complete process as:
+
+```text
+Data
+ ↓
+fit()
+ ↓
+Learn the transformation
+ ↓
+Model
+ ↓
+transform()
+ ↓
+Apply the transformation
+ ↓
+New representation
+```
+
+---
+
+## Do We Always Need `fit()` and `transform()`?
+
+Another thing I learned is that not every PySpark ML operation requires both `fit()` and `transform()`.
+
+It depends on whether the operation needs to **learn something from the data**.
+
+For example, PCA needs to analyze the data to learn the Principal Components.
+
+Therefore:
+
+```text
+PCA
+ ↓
+fit()
+ ↓
+PCA Model
+ ↓
+transform()
+```
+
+`StandardScaler`, which I used during Feature Engineering, follows a similar pattern because it needs to learn statistics from the data before applying the standardization.
+
+```text
+StandardScaler
+      ↓
+     fit()
+      ↓
+Scaler Model
+      ↓
+ transform()
+```
+
+However, `VectorAssembler` does not need to learn parameters from the data.
+
+Its job is to combine selected columns into a vector.
+
+Therefore, I can use:
+
+```python
+df_vectorized = vector_assembler.transform(
+    df_features
+)
+```
+
+without calling `fit()` first.
+
+This introduced me to two important concepts in PySpark ML:
+
+### Estimator
+
+An **Estimator** needs to learn something from the data.
+
+Conceptually:
+
+```text
+Estimator
+    ↓
+   fit()
+    ↓
+Model / Transformer
+    ↓
+transform()
+```
+
+PCA and StandardScaler are examples of this pattern.
+
+### Transformer
+
+A **Transformer** already knows how to apply its transformation and can use `transform()` directly.
+
+Conceptually:
+
+```text
+Transformer
+     ↓
+transform()
+     ↓
+Transformed Data
+```
+
+`VectorAssembler` is an example.
+
+A simple way I remember the difference is:
+
+```text
+Does it need to learn something
+from the data?
+
+        YES
+         ↓
+        fit()
+         ↓
+       Model
+         ↓
+    transform()
+
+
+         NO
+         ↓
+    transform()
+```
+
+This helped me understand that `fit()` and `transform()` are not just PCA commands. They are part of the way many components of the PySpark ML API are designed.
 
 ---
 
@@ -424,18 +717,13 @@ This is what **explained variance** helps me understand.
 In PySpark, I can retrieve it using:
 
 ```python
-explained_variance = (
-    pca_model.explainedVariance
-)
+explained_variance = (pca_model.explainedVariance)
 ```
 
 Then I can display the percentage represented by each component:
 
 ```python
-for i, variance in enumerate(
-    explained_variance,
-    start=1
-):
+for i, variance in enumerate(explained_variance, start=1):
     print(
         f"PC{i}: "
         f"{variance:.4f} "
@@ -454,18 +742,15 @@ PC3 → 13.00%
 This does **not** mean:
 
 ```text
-PC1 contains 20.48%
-of the original features
+PC1 contains 20.48% of the original features
 ```
 
-It means that:
+It means:
 
 ```text
 PC1
  ↓
-Represents approximately
-20.48% of the variability
-in the original feature data
+Represents approximately 20.48% of the variability in the original feature data
 ```
 
 The same interpretation applies to PC2 and PC3.
@@ -474,23 +759,19 @@ The same interpretation applies to PC2 and PC3.
 
 ## Cumulative Explained Variance
 
-I can also calculate how much variability the components represent together.
+Looking at each component separately is useful, but I also want to know
+how much variability the components represent together.
 
 For this, I used:
 
 ```python
-cumulative_variance = np.cumsum(
-    explained_variance
-)
+cumulative_variance = np.cumsum(explained_variance)
 ```
 
 Then:
 
 ```python
-for i, variance in enumerate(
-    cumulative_variance,
-    start=1
-):
+for i, variance in enumerate(cumulative_variance,start=1):
     print(
         f"PC1-PC{i}: "
         f"{variance:.4f} "
@@ -515,8 +796,7 @@ PCA (k=3)
         ↓
 3 Principal Components
         ↓
-48.54% Cumulative
-Explained Variance
+48.54% Cumulative Explained Variance
 ```
 
 This means that the three Principal Components represented approximately **48.54% of the variability contained in the original feature set**.
@@ -525,7 +805,7 @@ It does not mean that 48.54% of the features or records were preserved.
 
 It refers specifically to the amount of **variability represented by the three components**.
 
-This also helped me understand an important trade-off:
+This helped me understand the trade-off I was considering when choosing the number of components:
 
 ```text
 Fewer Dimensions
@@ -536,76 +816,12 @@ BUT
 
 Fewer Dimensions
        ↓
-Some Original Variability
-Can Be Lost
+Some Original Variability Can Be Lost
 ```
 
----
+In my implementation, I used three components and then evaluated the result.
 
-## Choosing the Number of Components
-
-One of the questions I had when learning PCA was:
-
-> How do I know how many components I should use?
-
-There is no universal rule saying that PCA should always use two, three, or any specific number of components.
-
-When I configure:
-
-```python
-PCA(k=3)
-```
-
-I am explicitly asking PySpark to create three Principal Components.
-
-PCA determines **how those components are constructed**, but I define how many components I want through `k`.
-
-I understand the process like this:
-
-```text
-I choose k
-    ↓
-PCA constructs the components
-    ↓
-I evaluate the explained variance
-    ↓
-I decide whether the reduced
-representation is useful
-```
-
-A practical approach is to evaluate different values of `k`:
-
-```text
-Choose k
-   ↓
-Apply PCA
-   ↓
-Check Explained Variance
-   ↓
-Check Cumulative Variance
-   ↓
-Evaluate the Result
-```
-
-The goal is to find an appropriate balance between:
-
-```text
-Reduce Dimensionality
-        ↕
-Preserve Variability
-```
-
-In my implementation, I configured:
-
-```text
-k = 3
-```
-
-and then evaluated the explained variance.
-
-The three components represented approximately 48.54% of the original variability.
-
-This does not mean that three components are the correct choice for every dataset.
+The 48.54% cumulative explained variance describes how much variability those three components represented. It does not demonstrate that `k=3` was the optimal number of components.
 
 ---
 
@@ -620,13 +836,9 @@ For example:
 ```python
 from sklearn.decomposition import PCA
 
-pca = PCA(
-    n_components=3
-)
+pca = PCA( n_components=3)
 
-X_pca = pca.fit_transform(
-    X_scaled
-)
+X_pca = pca.fit_transform( X_scaled)
 ```
 
 In this case:
@@ -664,13 +876,9 @@ Instead of defining the exact number of components, I can specify how much varia
 For example:
 
 ```python
-pca = PCA(
-    n_components=0.95
-)
+pca = PCA(n_components=0.95)
 
-X_pca = pca.fit_transform(
-    X_scaled
-)
+X_pca = pca.fit_transform(X_scaled)
 ```
 
 Conceptually:
@@ -693,7 +901,7 @@ In PySpark ML, `k` represents an integer number of components, so I can evaluate
 
 ## Visualizing the Explained Variance
 
-I can also visualize the explained variance to make the result easier to interpret.
+I can also visualize the explained variance to make the PCA result easier to interpret.
 
 ```python
 variance_pct = explained_variance * 100
@@ -741,8 +949,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-This makes it easier to compare how much variability is represented by
-each Principal Component.
+This makes it easier to compare how much variability is represented by each Principal Component.
 
 ---
 
@@ -790,7 +997,7 @@ This made each stage easier to execute and validate separately.
 
 After PCA, I used the resulting Principal Components as the input for K-Means clustering.
 
-The connection between both stages is simple:
+The connection between both stages is:
 
 ```text
 features_scaled
@@ -816,59 +1023,4 @@ K-Means received the reduced PCA representation:
 
 The next document continues from this point with **K-Means clustering**.
 
----
 
-## What I Learned
-
-After learning and applying PCA, the main concepts I wanted to keep
-documented are:
-
-- PCA is a dimensionality reduction technique.
-- PCA does not select the best original features.
-- PCA creates new variables called Principal Components.
-- Principal Components combine information from the original features.
-- PC1 captures the largest possible amount of variability, followed by the
-  remaining components.
-- In PySpark, `k` defines how many Principal Components I want to create.
-- PCA determines how those components are constructed.
-- `fit()` learns the PCA transformation.
-- `transform()` applies that transformation to the records.
-- Explained variance tells me how much variability each component represents.
-- Cumulative explained variance tells me how much variability several
-  components represent together.
-- Reducing dimensionality means that some original variability may be lost.
-- There is no universal value of `k` that works for every dataset.
-- PCA can be implemented using different libraries, including PySpark ML
-  and Scikit-learn.
-- The resulting PCA representation can be used as input for other Machine
-  Learning algorithms such as K-Means.
-
-The simplest way I remember PCA is:
-
-```text
-features_scaled
-       ↓
-      PCA
-       ↓
-Principal Components
-       ↓
-Explained Variance
-       ↓
-pca_features
-       ↓
-Next ML Step
-```
-
-In my practical implementation:
-
-```text
-16 Features
-      ↓
-PCA (k=3)
-      ↓
-3 Principal Components
-      ↓
-48.54% Cumulative Explained Variance
-      ↓
-K-Means
-```
