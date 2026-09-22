@@ -1,20 +1,54 @@
-# Medallion Architecture in Databricks
+# Medallion Architecture in Databricks — Learning Notes
 
-This document explains how I implemented a Medallion Architecture in Databricks using PySpark and Delta Lake.
+This document contains my notes and implementation examples while learning how a **Medallion Architecture** can be organized in Databricks using **PySpark and Delta Lake**.
 
-The purpose of this architecture is to separate the data pipeline into different layers according to the level of transformation and data quality.
-
-The structure I used was:
-
-**Source → Bronze / RAW → Silver / ODS → Gold / MART → Analytics / Machine Learning**
+> **Learning note**
+>
+> This is not intended to represent a complete production architecture.
+> It documents the approach I used to understand the responsibilities of the Bronze, Silver, and Gold layers.
 
 ---
 
-## Project Organization
+# What I Wanted to Understand
+
+The main idea I wanted to understand was:
+
+**Why should the same data pass through different layers instead of transforming everything in one step?**
+
+The structure I practiced was:
+
+```text
+Data Source
+     │
+     ▼
+Bronze / RAW
+     │
+     ▼
+Silver / ODS
+     │
+     ▼
+ Gold / MART
+     │
+     ├──────────► Analytics / BI
+     │
+     └──────────► Machine Learning
+```
+
+Each layer has a different responsibility.
+
+| Layer | Main Purpose |
+|---|---|
+| Bronze / RAW | Preserve source data |
+| Silver / ODS | Clean and standardize |
+| Gold / MART | Prepare business-ready data |
+
+---
+
+# Project Organization
 
 One of the first things I learned was the importance of separating notebooks according to their responsibility.
 
-Instead of keeping connections, ingestion, transformations, and data modeling in the same notebook, I organized the project into different folders.
+Instead of keeping connections, ingestion, transformations, and data modeling in the same notebook, I organized the exercises into different areas.
 
 Example:
 
@@ -30,29 +64,29 @@ project/
 └── MART_Gold/
 ```
 
-The connection configuration was kept in a separate notebook.
+The connection configuration can be kept in a separate notebook.
 
-From another Databricks notebook, I could execute it using:
+From another Databricks notebook, it can be executed using:
 
 ```python
 %run ../00_notebook_name
 ```
 
-This helped me avoid repeating connection configuration in multiple notebooks and made the project easier to maintain.
+This helped me understand how common configuration can be reused instead of repeating the same code across several notebooks.
 
-> Note: `%run` executes another Databricks notebook in the current notebook context, making its variables and functions available.
+> **Note:** `%run` executes another Databricks notebook in the current notebook context, making its variables and functions available.
 
 ---
 
-# Bronze / RAW Layer
+# 1. Bronze / RAW Layer
 
-## What I learned
+## What is the Bronze layer?
 
 The Bronze or RAW layer is the first layer of the Medallion Architecture.
 
-Its purpose is to preserve the data as close as possible to the original source.
+Its purpose is to preserve data as close as possible to the original source.
 
-Data can come from different sources such as:
+Data may come from:
 
 - CSV files
 - AWS S3
@@ -61,32 +95,34 @@ Data can come from different sources such as:
 - Excel files
 - Other external systems
 
-At this stage, I avoid applying business transformations because I want to preserve the original information for traceability.
+The idea I followed during this exercise was:
 
 ```text
-Source
+SOURCE
    │
    ▼
-RAW / Bronze
+BRONZE / RAW
 ```
 
-## Creating the RAW database
+At this stage, I avoid applying major business transformations because preserving the original information helps with traceability and troubleshooting.
 
-I created a separate database/schema for the RAW layer.
+---
+
+## Creating the RAW schema
 
 Example:
 
 ```python
-spark.sql("""
-CREATE DATABASE IF NOT EXISTS raw_myproject
-""")
+spark.sql("""CREATE DATABASE IF NOT EXISTS raw_myproject""")
 ```
 
-This keeps the raw tables logically separated from the transformed layers.
+This keeps the raw tables logically separated from transformed data.
+
+---
 
 ## Saving data as Delta tables
 
-After reading the source data into a DataFrame, I persisted it using Delta Lake.
+After reading the source data into a DataFrame, I persisted it using Delta format.
 
 Example:
 
@@ -97,17 +133,44 @@ df_traffic.write \
     .saveAsTable("raw_myproject.raw_traffic")
 ```
 
-Delta Lake allows the data to be stored as managed tables while providing features such as ACID transactions and table history.
+The concept I wanted to practice here was:
+
+```text
+Source file
+     │
+     ▼
+Spark DataFrame
+     │
+     ▼
+Delta Table
+     │
+     ▼
+RAW Layer
+```
 
 ---
 
-# Silver / ODS Layer
+## Why keep RAW data?
 
-## What I learned
+During this exercise I understood that preserving raw data can be useful for:
 
-The Silver or ODS layer contains data that has already gone through cleaning, validation, and standardization.
+- Traceability
+- Troubleshooting
+- Reprocessing
+- Comparing transformed data with its source
+- Auditing transformations
 
-Instead of reading the original source again, the Silver layer uses the tables stored in the RAW layer.
+This was especially familiar to me because data traceability is also important in traditional ETL architectures.
+
+---
+
+# 2. Silver / ODS Layer
+
+## What is the Silver layer?
+
+The Silver or ODS layer contains data that has already gone through cleaning, validation, or standardization.
+
+Instead of reading the original source again, this layer reads from the RAW tables.
 
 ```text
 RAW / Bronze
@@ -121,241 +184,366 @@ Validation
 ODS / Silver
 ```
 
-For example:
+---
+
+## Reading from RAW
+
+Example:
 
 ```python
 df_raw = spark.table("raw_myproject.raw_traffic")
 ```
 
-## Using PySpark functions
+At this point I can begin applying transformations.
 
-For many transformations, I used functions from PySpark SQL:
+---
 
-```python
-from pyspark.sql import functions as F
-```
+## Example transformations
 
-Some examples of transformations that can be performed in this layer are:
+Some transformations I practiced include:
 
+- Renaming columns
+- Casting data types
 - Handling null values
-- Removing duplicates
-- Removing or replacing unwanted characters
-- Standardizing categorical values
-- Converting data types
-- Validating ranges
-- Creating audit columns
-- Creating identifiers when required
-- Tracking the source of each record
+- Standardizing descriptions
+- Cleaning text
+- Removing unnecessary columns
+- Creating derived columns
+- Adding audit information
 
-For example:
-
-## Adding Audit Columns
-
-One practice I found useful in the Silver / ODS layer was adding audit columns.
-
-Audit columns help identify when a record was processed, when it was updated, where the data came from, and provide an identifier that can be used during the transformation process.
-
-For example:
+Example:
 
 ```python
 from pyspark.sql import functions as F
 
 df_silver = (
     df_raw
-    .withColumn("created_at", F.current_timestamp())
-    .withColumn("updated_at", F.current_timestamp())
-    .withColumn("data_source", F.lit("source_system"))
-    .withColumn(
-        "record_id",
-        F.monotonically_increasing_id().cast("string")
-    )
+    .withColumn("description", F.trim(F.col("description")))
+    .withColumn("processed_at", F.current_timestamp())
 )
 ```
 
-The purpose of each column is:
+---
 
-| Column | Purpose |
-|---|---|
-| `created_at` | Records when the row was processed or created in this layer |
-| `updated_at` | Records when the row was last processed or updated |
-| `data_source` | Identifies the system or source from which the data originated |
-| `record_id` | Generates an identifier that can be used to distinguish records |
+## Data quality
 
-This information is useful for **traceability, troubleshooting, and data lineage**.
+One important concept I wanted to understand was that the Silver layer should contain more reliable data than the Bronze layer.
 
-For example, if an unexpected record appears later in the pipeline, the audit information can help identify its source and when it was processed.
-
-After applying the transformations, I saved the result in a different database/schema:
+For example, I can inspect null values:
 
 ```python
-spark.sql("""
-CREATE DATABASE IF NOT EXISTS ods_myproject
-""")
+df_silver.select([
+    F.sum(F.col(c).isNull().cast("int")).alias(c)
+    for c in df_silver.columns
+]).show()
 ```
 
+Or inspect duplicate records:
+
 ```python
-df_ods.write \
+df_silver.groupBy("id") \
+    .count() \
+    .filter(F.col("count") > 1) \
+    .show()
+```
+
+These are simple learning examples, but they helped me understand where data-quality controls can be introduced.
+
+---
+
+## Audit columns
+
+I also practiced adding columns that provide information about when data was processed.
+
+Example:
+
+```python
+df_silver = (
+    df_silver
+    .withColumn("created_at", F.current_timestamp())
+    .withColumn("source_system", F.lit("source_name"))
+)
+```
+
+Audit fields can help answer questions such as:
+
+- When was this record processed?
+- Where did the data come from?
+- Which process generated it?
+
+---
+
+## Saving the Silver table
+
+```python
+df_silver.write \
     .format("delta") \
     .mode("overwrite") \
     .saveAsTable("ods_myproject.ods_traffic")
 ```
 
-Keeping RAW and ODS separated helped me distinguish the original data from the cleaned and standardized version.
+The flow is now:
+
+```text
+Source
+   │
+   ▼
+RAW
+   │
+   ▼
+Cleaning / Validation
+   │
+   ▼
+ODS
+```
 
 ---
 
-# Gold / MART Layer
+# 3. Gold / MART Layer
 
-## What I learned
+## What is the Gold layer?
 
-The Gold or MART layer contains data prepared for analytics and business consumption.
+The Gold or MART layer contains data prepared for analytical consumption.
 
-For this layer, I implemented a **Star Schema** using dimension and fact tables.
+This is where I practiced concepts such as:
+
+- Dimension tables
+- Fact tables
+- Business-oriented transformations
+- Aggregations
+- Star Schema modeling
 
 ```text
 ODS / Silver
       │
       ▼
-Dimensions + Facts
+Business Transformations
       │
       ▼
 MART / Gold
       │
-      ▼
-Analytics / BI / Machine Learning
+      ├────► BI / Dashboards
+      │
+      └────► Machine Learning
 ```
 
-I created another database/schema to keep this layer separated:
+---
+
+# Dimension Tables
+
+A dimension contains descriptive information that provides context to facts.
+
+Examples might include:
+
+```text
+DIM_DATE
+DIM_LOCATION
+DIM_VEHICLE
+DIM_PROFILE
+```
+
+A simplified dimension can be created using PySpark.
+
+Example:
 
 ```python
-spark.sql("""
-CREATE DATABASE IF NOT EXISTS mart_myproject
-""")
+dim_location = (
+    df_silver
+    .select(
+        "location_id",
+        "location_name"
+    )
+    .dropDuplicates()
+)
+```
+
+Then persisted as a Delta table:
+
+```python
+dim_location.write \
+    .format("delta") \
+    .mode("overwrite") \
+    .saveAsTable("mart_myproject.dim_location")
 ```
 
 ---
 
-## Dimension Tables
+# Fact Tables
 
-Dimension tables contain descriptive information that provides context to the business data.
+A fact table normally contains measurable events and references to dimensions.
 
-Examples could include:
-
-```text
-dim_date
-dim_location
-dim_vehicle
-dim_customer
-dim_operation
-```
-
-For example, instead of repeating location information in every record of a large fact table, this information can be stored in a dimension.
-
-A dimension may contain:
+Example conceptual structure:
 
 ```text
-location_id
-city
-zone
-neighborhood
-latitude
-longitude
+FACT_EVENT
+│
+├── date_id
+├── location_id
+├── vehicle_id
+├── event_count
+└── measurement
 ```
 
-The `location_id` can then be referenced from a fact table.
+A simplified example:
+
+```python
+fact_event = df_silver.select(
+    "event_id",
+    "date_id",
+    "location_id",
+    "vehicle_id",
+    "measurement"
+)
+```
+
+Save it:
+
+```python
+fact_event.write \
+    .format("delta") \
+    .mode("overwrite") \
+    .saveAsTable("mart_myproject.fact_event")
+```
 
 ---
 
-## Fact Tables
+# Star Schema
 
-Fact tables contain the events, observations, or measurements that we want to analyze.
-
-They normally include foreign keys that connect the fact table with the dimensions.
-
-For example:
+This exercise also helped me understand how dimensions and facts can form a Star Schema.
 
 ```text
-fact_traffic
---------------------------------
-time_id
-location_id
-operation_id
-speed
-traffic_intensity
-occupancy
+                  DIM_DATE
+                     │
+                     │
+DIM_LOCATION ─── FACT_EVENT ─── DIM_VEHICLE
+                     │
+                     │
+                 DIM_PROFILE
 ```
 
-The relationships can be represented as a Star Schema:
+The fact table contains the events or measurements.
 
-```text
-                  dim_time
-                      │
-                      │
-                      ▼
-dim_location ─── fact_traffic ─── dim_operation
-                      │
-                      │
-                      ▼
-                 dim_vehicle
-```
-
-This structure makes it easier to analyze the data using SQL, BI tools, or Machine Learning processes.
+The dimensions provide context for analyzing those events.
 
 ---
 
 # Why Separate the Layers?
 
-One of the most useful things I learned while implementing this architecture was that each layer has a different responsibility.
+Before working with this architecture, one question I had was:
 
-| Layer | Main Purpose |
-|---|---|
-| **Bronze / RAW** | Preserve data from the source |
-| **Silver / ODS** | Clean, validate, and standardize data |
-| **Gold / MART** | Prepare data for analytics and business consumption |
+> Why not clean and transform everything directly when reading the source?
 
-This separation also improves traceability.
+The separation helped me understand several benefits.
 
-For example, if I find an unexpected value in a Gold table, I can check the corresponding Silver table to determine whether the issue was introduced during data modeling.
+## Traceability
 
-If necessary, I can then compare it with the RAW layer to see how the value originally arrived from the source.
+If a transformation produces an unexpected result, I can compare:
 
 ```text
 SOURCE
-   │
-   ▼
-RAW / BRONZE
-Original data
-   │
-   ▼
-ODS / SILVER
-Cleaned and standardized data
-   │
-   ▼
-MART / GOLD
-Business-ready data
-   │
-   ├──► SQL Analytics
-   ├──► Tableau / Power BI
-   └──► Machine Learning
+  ↓
+RAW
+  ↓
+ODS
+  ↓
+MART
+```
+
+and identify at which stage the data changed.
+
+---
+
+## Reprocessing
+
+Because RAW preserves source information, transformations can potentially be executed again without having to obtain the source file again.
+
+---
+
+## Separation of responsibilities
+
+Each layer has a specific purpose:
+
+```text
+RAW  = What arrived?
+
+ODS  = What does the cleaned data look like?
+
+MART = How will the data be consumed?
+```
+
+This made the pipeline easier for me to understand and troubleshoot.
+
+---
+
+# Delta Lake
+
+Another concept I practiced during this implementation was **Delta Lake**.
+
+Instead of working only with temporary Spark DataFrames, I persisted data between stages as Delta tables.
+
+Simplified example:
+
+```python
+df.write \
+    .format("delta") \
+    .mode("overwrite") \
+    .saveAsTable("schema.table")
+```
+
+This allowed me to work with persistent tables between notebooks and pipeline stages.
+
+---
+
+# Full Learning Flow
+
+Putting the concepts together:
+
+```text
+                 DATA SOURCE
+                     │
+                     ▼
+                   AWS S3
+                     │
+                     ▼
+             ┌────────────────┐
+             │ BRONZE / RAW   │
+             │ Original data  │
+             └───────┬────────┘
+                     │
+                     ▼
+             ┌────────────────┐
+             │ SILVER / ODS   │
+             │ Cleaned data   │
+             └───────┬────────┘
+                     │
+                     ▼
+             ┌────────────────┐
+             │ GOLD / MART    │
+             │ Business data  │
+             └───────┬────────┘
+                     │
+             ┌───────┴────────┐
+             ▼                ▼
+       Analytics / BI    Machine Learning
 ```
 
 ---
 
-# Key Takeaways
 
-By implementing the Medallion Architecture, I learned how to:
+# Important Note
 
-- Organize Databricks notebooks by responsibility.
-- Reuse common notebook logic with `%run`.
-- Separate raw data from transformed data.
-- Persist PySpark DataFrames as Delta tables.
-- Apply data quality and standardization rules with PySpark.
-- Create audit fields for traceability.
-- Organize data into RAW, ODS, and MART schemas.
-- Build dimension and fact tables.
-- Implement a Star Schema for analytical workloads.
-- Prepare datasets for BI and Machine Learning.
+This repository documents my **learning process**.
 
-The most important lesson for me was that the Medallion Architecture is not only about creating Bronze, Silver, and Gold folders or tables.
+The examples are intentionally simplified so I can focus on understanding individual concepts.
 
-Each layer has a specific responsibility, which makes the data pipeline easier to understand, troubleshoot, maintain, and extend.
+---
+
+## Next Step
+
+After preparing the data, I started exploring how the Gold/MART information could be prepared for Machine Learning.
+
+➡️ [Machine Learning — Feature Engineering](Machine_Learning_feature.md)
+
+---
+
+⬅️ [Back to main README](README.md)
