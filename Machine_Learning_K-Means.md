@@ -1,6 +1,18 @@
-# K-Means Clustering
+# K-Means Clustering with PySpark
 
-These are my notes about **K-Means**, written in the same simple way I learned the concept.
+## Based on What I Learned and Applied
+
+This documentation continues from the **Feature Engineering** and **PCA** stages.
+
+In my Machine Learning workflow, I first prepared and standardized the features, then applied PCA, and finally used the PCA representation as the input for K-Means clustering.
+
+To make K-Means easier to understand, I continue using the **sushi restaurant example** and then connect the concepts with the **parking-demand implementation from my thesis**.
+
+> **Learning note**
+>
+> This repository documents what I implemented and learned while working with Databricks, PySpark, and Spark ML.
+>
+> The sushi examples are simplified learning examples. The thesis sections show how I applied the concepts in my academic project.
 
 The complete flow is:
 
@@ -9,22 +21,26 @@ Feature Engineering
         ↓
 StandardScaler
         ↓
-PCA (optional)
+PCA
+        ↓
+pca_features
         ↓
 K-Means
         ↓
 Silhouette
         ↓
-Interpret the clusters
+Interpret the Clusters
 ```
 
 ---
 
-# Before K-Means: Do I Always Need PCA?
+# What I Learned
+
+## 1. Before K-Means: Do I Always Need PCA?
 
 No. **PCA is not mandatory before K-Means.**
 
-This is important because I can have either:
+This was an important concept for me because K-Means can be applied directly to standardized features:
 
 ```text
 Feature Engineering
@@ -34,7 +50,7 @@ StandardScaler
 K-Means
 ```
 
-or:
+or after dimensionality reduction:
 
 ```text
 Feature Engineering
@@ -43,97 +59,6 @@ StandardScaler
         ↓
 PCA
         ↓
-K-Means
-```
-
-## Gym Example
-
-Imagine a gym wants to discover groups of customers with similar behavior.
-
-If I only have five features:
-
-```text
-Visits per Month
-Months as Customer
-Monthly Spending
-Group Classes per Month
-Uses Personal Trainer
-```
-
-I may not need PCA.
-
-I only have five dimensions, so after `StandardScaler` I can try K-Means directly.
-
-Now imagine I have **25 features**.
-
-In that case, testing PCA may be more useful.
-
-Suppose I apply:
-
-```text
-PCA(k=4)
-```
-
-and obtain:
-
-```text
-PC1 → 28%
-PC2 → 19%
-PC3 → 13%
-PC4 → 10%
-
-Cumulative Explained Variance → 70%
-```
-
-This means:
-
-```text
-25 original features
-        ↓
-4 Principal Components
-        ↓
-70% of the original variability represented
-```
-
-It does **not** mean 70% accuracy.
-
-There is a trade-off:
-
-```text
-Benefit:
-25 dimensions → 4 dimensions
-
-Cost:
-30% of the original variability is not represented
-```
-
-So my decision is not:
-
-> I must use PCA because I am going to use K-Means.
-
-Instead:
-
-> I can test PCA, see how much I reduce the dimensionality and how much cumulative variance I preserve, and then decide whether using PCA before K-Means makes sense.
-
-I can also compare:
-
-```text
-OPTION A
-
-StandardScaler
-      ↓
-K-Means
-```
-
-with:
-
-```text
-OPTION B
-
-StandardScaler
-      ↓
-PCA
-      ↓
 K-Means
 ```
 
@@ -141,27 +66,32 @@ The easiest way for me to remember the difference is:
 
 ```text
 PCA
-↓
-Can I represent this information with fewer dimensions?
+ ↓
+Can I represent this information
+with fewer dimensions?
+
 
 K-Means
-↓
-Which records have similar behavior?
+ ↓
+Which records have
+similar behavior?
 ```
+
+In my thesis workflow, I used the PCA representation as the input for K-Means.
 
 ---
 
-# What Is K-Means?
+# 2. What Is K-Means?
 
 K-Means is an **unsupervised Machine Learning algorithm** that creates groups of similar records.
 
-It is unsupervised because I do not have a target that tells the model the correct group for each record.
+It is unsupervised because there is no known target telling the algorithm which group is correct for each record.
 
-## Sushi Example
+### Sushi Example
 
 Imagine a sushi restaurant with 10,000 customers.
 
-I have:
+The restaurant has information such as:
 
 ```text
 visits_per_month
@@ -171,7 +101,7 @@ restaurant_orders
 customer_tenure
 ```
 
-But I do not have:
+But it does not already have:
 
 ```text
 customer_type
@@ -179,42 +109,123 @@ customer_type
 
 The restaurant wants to discover:
 
-> What types of customers do we have?
+> What types of customer behavior appear in the data?
 
-I do not already know the answer.
+There is no predefined answer such as:
 
-That is why this is an **unsupervised learning problem**.
+```text
+Customer A → Frequent Customer
+Customer B → Delivery Customer
+Customer C → New Customer
+```
 
-A simple way I remember the difference is:
+K-Means tries to discover groups based on similarities in the selected numerical features.
+
+This helped me understand the difference between supervised and unsupervised learning:
 
 ```text
 SUPERVISED
 
-I have a known target
-        ↓
-I want to predict it
+Known Target
+     ↓
+Learn to Predict It
 ```
+
+versus:
 
 ```text
 UNSUPERVISED
 
-I do not have a known target
-        ↓
-I want to discover patterns or groups
+No Known Target
+     ↓
+Discover Patterns or Groups
 ```
 
-The features are selected because each one gives information about the behavior I want to study.
+The features still need to be selected according to the objective of the analysis.
 
-I do not include a feature only because it exists.
+A feature should not be included only because it exists in the dataset.
 
 ---
 
-# What Does K Mean?
+#  3. How This Related to My Thesis
+
+In my parking-demand project, I also did not have a predefined variable saying:
+
+```text
+This observation belongs to Cluster 0
+This observation belongs to Cluster 1
+This observation belongs to Cluster 2
+```
+
+Instead, I prepared information related to aspects such as:
+
+```text
+Driver Profile
+Parking Location
+Survey Zone
+```
+
+After Feature Engineering:
+
+```text
+Categorical Information
+        ↓
+Numerical Features
+        ↓
+VectorAssembler
+        ↓
+StandardScaler
+```
+
+and PCA:
+
+```text
+features_scaled
+        ↓
+PCA
+        ↓
+pca_features
+        ↓
+[PC1, PC2, PC3]
+```
+
+I used K-Means to explore groups of observations with similar numerical representations.
+
+Therefore, the conceptual relationship is:
+
+```text
+ SUSHI
+
+Customer Behavior
+      ↓
+Numerical Features
+      ↓
+K-Means
+      ↓
+Customer Groups
+
+
+THESIS
+
+Parking-Demand Information
+      ↓
+Numerical Features
+      ↓
+PCA Representation
+      ↓
+K-Means
+      ↓
+Groups of Similar Observations
+```
+
+---
+
+# 4. What Does K Mean?
 
 In K-Means:
 
 ```text
-K = number of clusters I want to create
+K = number of clusters
 ```
 
 For example:
@@ -232,19 +243,37 @@ This is different from `k` in PCA.
 PCA(k=3)
 → 3 Principal Components
 
+
 KMeans(k=3)
-→ 3 clusters
+→ 3 Clusters
 ```
 
-The same letter is used, but it means two different things.
+The same letter is used, but it represents two completely different concepts.
+
+This distinction was especially important in my workflow because I used:
+
+```text
+PCA
+k = 3
+```
+
+to create:
+
+```text
+PC1
+PC2
+PC3
+```
+
+and then K-Means used those components to create clusters.
 
 ---
 
-# How Does K-Means Decide the Cluster?
+# 5. How Does K-Means Assign a Record to a Cluster?
 
 This was easier for me to understand using **distances**.
 
-Suppose one customer has these distances:
+Imagine that one sushi customer has the following distances from three cluster centroids:
 
 ```text
 Cluster 0 → distance = 4.8
@@ -258,7 +287,7 @@ The smallest distance is:
 1.6
 ```
 
-and it belongs to:
+which corresponds to:
 
 ```text
 Cluster 1
@@ -267,36 +296,40 @@ Cluster 1
 Therefore:
 
 ```text
-Customer → Cluster 1
+Customer
+   ↓
+Closest Centroid
+   ↓
+Cluster 1
 ```
 
-The rule I need to remember is:
+The rule I learned is:
 
-> **K-Means assigns each record to the cluster whose centroid has the smallest distance.**
+> **K-Means assigns each record to the cluster whose centroid is closest according to the distance measure being used.**
 
-Or even shorter:
+A simple way to remember it is:
 
 ```text
 SMALLEST DISTANCE
         ↓
 CLOSEST CENTROID
         ↓
-THAT CLUSTER
+ASSIGNED CLUSTER
 ```
 
 ---
 
-# What Is a Centroid?
+# 6. What Is a Centroid?
 
-A centroid represents the **center of a cluster**.
+A centroid represents the **center of a cluster in the feature space**.
 
-For a very simple example, imagine I only have one feature:
+For a very simple example, imagine that the only feature is:
 
 ```text
 visits_per_month
 ```
 
-and three customers:
+and three sushi customers have:
 
 ```text
 Customer A → 23 visits
@@ -304,27 +337,38 @@ Customer B → 24 visits
 Customer C → 25 visits
 ```
 
-The center is:
+The mean is:
 
 ```text
 (23 + 24 + 25) / 3 = 24
 ```
 
-So the centroid is approximately:
+So the center is:
 
 ```text
 24
 ```
 
-With real data, I have several dimensions instead of only one number.
+With real Machine Learning data, each record contains several dimensions instead of one value.
 
-But the basic idea is the same:
+Conceptually:
 
-> The centroid represents the center of the records assigned to that cluster.
+```text
+Cluster
+ │
+ ├── Record A
+ ├── Record B
+ ├── Record C
+ └── ...
+        ↓
+     Centroid
+```
+
+The centroid represents the center of the records assigned to that cluster in the feature space.
 
 ---
 
-# How K-Means Works
+# 7. How K-Means Works
 
 K-Means does not assign the records only once.
 
@@ -347,26 +391,30 @@ In a simplified way:
         ↓
 6. Reassign records if needed
         ↓
-7. Repeat until the solution stabilizes
+7. Repeat until the algorithm
+   converges or reaches a
+   stopping condition
 ```
 
-This also helps me understand the name:
+This also helped me understand the name:
 
 ```text
 K
 ↓
-number of clusters
+Number of Clusters
+
 
 Means
 ↓
-the centers are based on means
+Cluster Centers
+Based on Means
 ```
 
 ---
 
-# How Do I Choose K?
+# 8. How Did I Evaluate Different Values of K?
 
-I do not automatically know how many clusters I should use.
+I learned that I do not automatically know how many clusters should be created.
 
 One approach is to test several values.
 
@@ -379,7 +427,7 @@ K = 4
 K = 5
 ```
 
-A `for` loop lets me repeat the experiment:
+A `for` loop can repeat the experiment:
 
 ```python
 for k in range(2, 6):
@@ -387,41 +435,42 @@ for k in range(2, 6):
     # Evaluate this K
 ```
 
-But the `for` does **not** decide which K is better.
+But the `for` loop does **not** decide which K is more appropriate.
 
-It only allows me to test several values.
+It only allows several values to be tested.
 
-To compare the results, I need a metric.
-
-One metric I can use is the **Silhouette Score**.
+To compare the resulting clusterings, I used the **Silhouette Score**.
 
 ---
 
-# Silhouette Score
+# 9. Understanding the Silhouette Score
 
-The Silhouette Score helps me evaluate how the clustering turned out.
+The Silhouette Score helped me evaluate the clustering results.
 
 I think about two questions:
 
 ```text
-Are the records inside the same cluster cohesive / close to each other?
+Are records inside the same
+cluster relatively cohesive?
 
-              +
+            +
 
-Are the different clusters well separated from each other?
+Are different clusters
+well separated?
 ```
 
-A simple interpretation is:
+A general interpretation is:
 
 ```text
 Closer to 1
-→ better cohesion inside clusters and better separation between clusters
+→ stronger cohesion and separation
 
 Closer to 0
 → more overlap between clusters
 
-Negative
-→ some records may fit another  cluster better
+Negative values
+→ some observations may be closer
+  to another cluster
 ```
 
 The important distinction is:
@@ -429,11 +478,12 @@ The important distinction is:
 ```text
 K-MEANS
 
-Which cluster should this record belong to?
+Where should this record
+be assigned?
 
-        ↓
+       ↓
 
-Look for the SMALLEST distance to a centroid
+Distance to Centroids
 ```
 
 while:
@@ -441,23 +491,22 @@ while:
 ```text
 SILHOUETTE
 
-How good is the resulting grouping?
-
-        ↓
-
-When comparing tested K values, a HIGHER score is generally preferred
+How cohesive and separated
+is the resulting clustering?
 ```
 
-## Sushi Example
+---
+
+#  10. Testing K — Sushi Example
 
 Suppose I test:
 
-```text
-K = 2 → Silhouette = 0.38
-K = 3 → Silhouette = 0.67
-K = 4 → Silhouette = 0.55
-K = 5 → Silhouette = 0.49
-```
+| K | Silhouette |
+|---:|---:|
+| 2 | 0.38 |
+| 3 | **0.67** |
+| 4 | 0.55 |
+| 5 | 0.49 |
 
 Among these tested values:
 
@@ -471,17 +520,22 @@ has the highest Silhouette Score:
 0.67
 ```
 
-Therefore, I can say:
+Therefore, the correct interpretation is:
 
 > Among the tested values of K, K=3 produced the highest Silhouette Score.
 
-I should **not** say that 3 is universally the perfect number of clusters.
+It does **not** mean:
 
-I only know that it was the best result **among the values I tested according to this metric**.
+```text
+K = 3 is always the perfect
+number of clusters
+```
+
+It only means that it produced the highest Silhouette Score among the tested configurations in this example.
 
 ---
 
-# K-Means Does Not Name the Groups
+# 11. K-Means Does Not Automatically Explain the Groups
 
 Suppose K-Means returns:
 
@@ -501,45 +555,50 @@ Cluster 2 = Delivery Customers
 Cluster 3 = High-Spending Customers
 ```
 
-K-Means only created the groups.
+K-Means only creates the groups.
 
-To understand what each group represents, I return to the **original variables**.
+To understand what each group represents, I need to return to variables that are meaningful to a person.
 
 For example:
 
 ```text
 Cluster 0
 
-Average visits/month       → 18
-Average spending           → $190,000
-Average delivery orders    → 3
-Average restaurant orders  → 15
-Average customer tenure    → 30 months
+Average visits/month      → 18
+Average spending          → $190,000
+Average delivery orders   → 3
+Average restaurant orders → 15
+Average customer tenure   → 30 months
 ```
 
-Now I can interpret the pattern.
+Based on those observed characteristics, I could describe the pattern.
 
 For example:
 
 > Cluster 0 contains customers with frequent visits, higher spending and more restaurant orders.
 
-The important idea is:
+The important concept is:
 
 ```text
 K-Means
-↓
-creates the groups
+   ↓
+Creates Groups
 
-Original variables
-↓
-help me understand the groups
+
+Original Variables
+   ↓
+Help Explain Groups
 ```
+
+The interpretation must come from the **actual characteristics observed in each cluster**.
 
 ---
 
-# What Happens If I Used PCA?
+# 12. What Happens When PCA Is Used Before K-Means?
 
-If I used PCA before K-Means, the process is:
+In my workflow, PCA was applied before K-Means.
+
+The process was:
 
 ```text
 Original Data
@@ -550,17 +609,19 @@ StandardScaler
       ↓
 PCA
       ↓
+pca_features
+      ↓
 K-Means
       ↓
-prediction / cluster
+prediction
       ↓
-Connect the cluster assignment
-back to the original data
+Connect Cluster Assignment
+Back to Understandable Variables
       ↓
-Interpret each group
+Interpret the Groups
 ```
 
-K-Means can work with:
+K-Means used:
 
 ```text
 PC1
@@ -568,13 +629,15 @@ PC2
 PC3
 ```
 
-to create the groups.
+to calculate similarity and create the groups.
 
-But when I want to understand what those groups mean, I can return to variables that are easier for me to interpret.
+However, PCA coordinates are not always easy for a person to interpret.
+
+Therefore, after clustering, I returned to descriptive variables from the original dataset to understand the characteristics of the observations in each cluster.
 
 ---
 
-# PySpark — Sushi Example
+#  13. PySpark — Sushi Example
 
 Assume PCA already produced a Delta table containing:
 
@@ -590,17 +653,24 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession.builder.getOrCreate()
 
-df_pca = spark.table("mart_myproject.ml_features_pca")
+df_pca = spark.table(
+    "mart_myproject.ml_features_pca"
+)
 
 df_pca.select(
     "customer_id",
     "pca_features"
-).show(5, truncate=False)
+).show(
+    5,
+    truncate=False
+)
 ```
 
 ---
 
-# Testing Different Values of K with PySpark
+# 14. Testing Different Values of K with PySpark
+
+I can test several K values with PySpark:
 
 ```python
 from pyspark.ml.clustering import KMeans
@@ -644,7 +714,7 @@ for k in range(2, 6):
     )
 ```
 
-Then I can find the highest Silhouette among the tested values:
+Then the highest Silhouette Score among the tested configurations can be identified:
 
 ```python
 best_k, best_silhouette = max(
@@ -665,21 +735,24 @@ The logic is:
 
 ```text
 for loop
-→ tests several K values
+   ↓
+Tests Several K Values
 
 Silhouette
-→ evaluates each result
+   ↓
+Evaluates Each Clustering
 
 max(...)
-→ finds the highest score
-  among the tested values
+   ↓
+Finds the Highest Score
+Among Those Tested
 ```
 
 ---
 
-# Training the Final K-Means Model
+# 15. Training the Selected K-Means Model
 
-Once I select `best_k`:
+After selecting a value of K from the tested configurations:
 
 ```python
 final_kmeans = KMeans(
@@ -700,35 +773,44 @@ df_clusters = final_model.transform(
 )
 ```
 
-Now each customer has a cluster assignment:
+Now each record has a cluster assignment:
 
 ```python
 df_clusters.select(
     "customer_id",
     "pca_features",
     "prediction"
-).show(10, truncate=False)
+).show(
+    10,
+    truncate=False
+)
 ```
 
 For example:
 
 ```text
-customer_id | pca_features        | prediction
+customer_id | pca_features       | prediction
 ------------------------------------------------
-1           | [1.2, -0.4, 0.3]   | 2
-2           | [-1.8, 0.7, -0.2]  | 0
-3           | [0.6, -2.1, 1.1]   | 1
+1           | [1.2,-0.4,0.3]    | 2
+2           | [-1.8,0.7,-0.2]   | 0
+3           | [0.6,-2.1,1.1]    | 1
 ```
 
-`prediction` is the cluster assigned by K-Means.
+The new column:
+
+```text
+prediction
+```
+
+contains the cluster assigned by K-Means.
 
 ---
 
-# Interpreting the Sushi Clusters
+# 16. Interpreting the Sushi Clusters
 
-The PCA coordinates helped K-Means create the groups, but they are not always the easiest values for a person to interpret.
+The PCA coordinates helped K-Means create the groups, but they are not necessarily the easiest values for a person to interpret.
 
-I can keep `customer_id` and connect the result back to the original customer data.
+By keeping `customer_id`, I can connect the clustering result back to the original customer information.
 
 ```python
 df_interpreted = (
@@ -744,7 +826,7 @@ df_interpreted = (
 )
 ```
 
-Then I can calculate summaries using the original variables:
+Then I can summarize the original variables:
 
 ```python
 from pyspark.sql import functions as F
@@ -778,7 +860,7 @@ cluster_summary = (
 cluster_summary.show()
 ```
 
-This is where I can start saying things like:
+This is the stage where descriptions such as:
 
 ```text
 Cluster 0
@@ -791,15 +873,13 @@ Cluster 2
 → customers who use delivery more often
 ```
 
-But these descriptions must come from the **actual values observed in each cluster**.
+could be created **only if the actual values observed in the clusters support those descriptions**.
 
 ---
 
-# Python / scikit-learn — Same Logic
+# 17. Python / Scikit-learn — Same Logic
 
-I can reproduce the same workflow using Python and scikit-learn.
-
-First I use the same PCA representation:
+The same general clustering workflow can also be implemented with Python and Scikit-learn.
 
 ```python
 import numpy as np
@@ -821,7 +901,7 @@ X = np.vstack(
 )
 ```
 
-Then I test several values of K:
+Then several K values can be tested:
 
 ```python
 results_python = []
@@ -875,20 +955,22 @@ print(
 The logic is the same:
 
 ```text
-same PCA representation
+Same PCA Representation
         ↓
-test several K values
+Test Several K Values
         ↓
 K-Means
         ↓
 Silhouette
         ↓
-compare the results
+Compare Results
 ```
 
 ---
 
-# Important: PySpark and Python May Number Clusters Differently
+# 18. PySpark and Scikit-learn May Number Clusters Differently
+
+An important detail I learned is that cluster numbers are only **labels**.
 
 For example:
 
@@ -897,16 +979,16 @@ PySpark
 Cluster 0
 ```
 
-could represent the same group that Python calls:
+could represent a similar group to:
 
 ```text
-scikit-learn
+Scikit-learn
 Cluster 2
 ```
 
 This is not necessarily an error.
 
-The cluster numbers are only **labels**.
+The labels:
 
 ```text
 Cluster 0
@@ -914,19 +996,19 @@ Cluster 1
 Cluster 2
 ```
 
-does not mean:
+do **not** mean:
 
 ```text
-worst
-medium
-best
+Worst
+Medium
+Best
 ```
 
 They are simply identifiers.
 
-Also, PySpark and scikit-learn may initialize the centroids differently.
+Also, PySpark and Scikit-learn may initialize and optimize the clustering independently.
 
-Because of that, using:
+Therefore:
 
 ```text
 seed = 42
@@ -938,13 +1020,13 @@ in PySpark and:
 random_state = 42
 ```
 
-in scikit-learn does not guarantee that both independent executions will produce exactly the same cluster IDs or assignments.
+in Scikit-learn do not guarantee that two independent implementations will produce identical cluster IDs or assignments.
 
 ---
 
-# Validating the Same PySpark Result with Python
+# 19. Validating the Same PySpark Result with Python
 
-If I want Python to evaluate the **same clustering generated by PySpark**, I can take the assignments already produced by PySpark.
+If I want Python to evaluate the **same clustering generated by PySpark**, I can use the assignments already produced by PySpark.
 
 ```python
 pdf_validation = df_clusters.select(
@@ -977,24 +1059,26 @@ print(
 )
 ```
 
-Now Python is evaluating:
+Now Python evaluates:
 
 ```text
-same PCA coordinates
-+
-same cluster assignments
+Same PCA Coordinates
+        +
+Same Cluster Assignments
+        ↓
+Silhouette Validation
 ```
 
-produced by PySpark.
+This is different from training an entirely new K-Means model in Scikit-learn.
 
 ---
 
-# Practical Result — Parking Demand Project
+#  20. Parking-Demand Project
 
-In my parking-demand project, the unsupervised flow was:
+In my parking-demand project, the ML flow documented in the previous stages was:
 
 ```text
-16 features
+16 Features
       ↓
 StandardScaler
       ↓
@@ -1005,17 +1089,6 @@ PC1 + PC2 + PC3
 K-Means
 ```
 
-The PCA result was:
-
-```text
-PC1 → 20.48%
-PC2 → 15.06%
-PC3 → 13.00%
-
-Cumulative Explained Variance
-→ 48.54%
-```
-
 Therefore, K-Means received:
 
 ```text
@@ -1024,84 +1097,62 @@ pca_features
 [PC1, PC2, PC3]
 ```
 
-instead of the original 16-dimensional vector.
+instead of the original 10-dimensional feature vector.
 
-The final clustering dataset contained:
+This is an important distinction:
 
 ```text
-90 unique survey observations
+Original Feature Space
+      ↓
+10 Dimensions
+
+PCA Representation
+      ↓
+3 Dimensions
+
+K-Means Input
+      ↓
+[PC1, PC2, PC3]
 ```
 
 ---
 
-# Testing K in the Project
+#  21. Testing K in the Project
 
-I tested:
+For the clustering experiment documented in this project, I compared several values of K using the Silhouette Score.
 
-| K | Silhouette |
-|---:|---:|
-| 2 | 0.5585 |
-| 3 | 0.5044 |
-| 4 | 0.6539 |
-| 5 | **0.7211** |
-
-Among the tested values:
+The logic was:
 
 ```text
+K = 2
+K = 3
+K = 4
 K = 5
+      ↓
+Train K-Means
+      ↓
+Calculate Silhouette
+      ↓
+Compare Tested Results
 ```
 
-had the highest Silhouette Score:
+The important interpretation is:
+
+> The selected K should be described as the result of the configurations tested in the experiment, not as a universally correct number of clusters.
+
+For example:
 
 ```text
-0.7211
+Among the tested values of K,
+the selected configuration produced
+the highest Silhouette Score.
 ```
-
-Therefore, I selected:
-
-```text
-K = 5
-```
-
-for the final segmentation.
-
-The correct way for me to explain this is:
-
-> Among K=2, K=3, K=4 and K=5, K=5 produced the highest Silhouette Score.
-
-It does not mean that five clusters are universally the only possible solution.
 
 ---
 
-# Final Cluster Distribution
+#  22. PySpark — Project Version
 
-The 90 observations were distributed as:
-
-| Cluster | Records | Percentage |
-|---:|---:|---:|
-| 0 | 29 | 32.22% |
-| 1 | 29 | 32.22% |
-| 2 | 22 | 24.44% |
-| 3 | 4 | 4.44% |
-| 4 | 6 | 6.67% |
-
-Again:
-
-```text
-Cluster 4
-```
-
-does not mean it is better than:
-
-```text
-Cluster 1
-```
-
-The numbers are only identifiers.
-
----
-
-# PySpark — Project Version
+I loaded the PCA result produced in the previous stage:
 
 ```python
 from pyspark.ml.clustering import KMeans
@@ -1110,14 +1161,22 @@ from pyspark.ml.evaluation import ClusteringEvaluator
 df_pca = spark.table(
     "mart_parqueo.ml_features_pca"
 )
+```
 
+I configured the evaluator:
+
+```python
 evaluator = ClusteringEvaluator(
     featuresCol="pca_features",
     predictionCol="prediction",
     metricName="silhouette",
     distanceMeasure="squaredEuclidean"
 )
+```
 
+Then I tested different values of K:
+
+```python
 results = []
 
 for k in range(2, 6):
@@ -1131,13 +1190,21 @@ for k in range(2, 6):
         predictionCol="prediction"
     )
 
-    model = kmeans.fit(df_pca)
+    model = kmeans.fit(
+        df_pca
+    )
 
-    predictions = model.transform(df_pca)
+    predictions = model.transform(
+        df_pca
+    )
 
-    score = evaluator.evaluate( predictions )
+    score = evaluator.evaluate(
+        predictions
+    )
 
-    results.append( (k, score) )
+    results.append(
+        (k, score)
+    )
 
     print(
         f"K={k} | "
@@ -1154,7 +1221,7 @@ best_k, best_score = max(
 )
 
 print(
-    f"Best K: {best_k}"
+    f"Best K among tested values: {best_k}"
 )
 
 print(
@@ -1162,103 +1229,39 @@ print(
 )
 ```
 
-For the final project:
-
-```text
-Best K among tested values → 5
-Silhouette                 → 0.7211
-```
-
-Then I trained the final model:
-
-```python
-kmeans_final = KMeans(
-    k=5,
-    seed=42,
-    maxIter=20,
-    initMode="k-means||",
-    featuresCol="pca_features",
-    predictionCol="prediction"
-)
-
-kmeans_model = kmeans_final.fit(
-    df_pca
-)
-
-df_clusters = kmeans_model.transform(
-    df_pca
-)
-```
+This allowed me to compare the tested configurations using the same evaluation metric.
 
 ---
 
-# Python Validation — Project
+# 23. Interpreting the Thesis Clusters
 
-I can validate the PySpark clustering using Python with the same assignments:
-
-```python
-import numpy as np
-
-from sklearn.metrics import silhouette_score
-
-pdf_clusters = df_clusters.select(
-    "id_encuesta",
-    "pca_features",
-    "prediction"
-).toPandas()
-
-X = np.vstack(
-    pdf_clusters["pca_features"].apply(
-        lambda x: x.toArray()
-        if hasattr(x, "toArray")
-        else np.asarray(x)
-    )
-)
-
-labels = (
-    pdf_clusters["prediction"]
-    .to_numpy()
-)
-
-silhouette_python = silhouette_score(
-    X,
-    labels,
-    metric="sqeuclidean"
-)
-
-print(
-    f"Silhouette calculated in Python: "
-    f"{silhouette_python:.4f}"
-)
-```
-
-The purpose here is to evaluate the **same clustering** generated in PySpark.
-
----
-
-# Interpreting the Project Clusters
-
-After K-Means created the groups, I returned to variables that are easier to understand.
+After K-Means created the groups, I returned to variables that were easier to understand.
 
 For example:
 
 ```text
-driver profile
-geographic zone
-willingness to rent
+Driver Profile
+Parking Location
+Survey Zone
 ```
 
-The logic is:
+The logic was:
 
 ```text
 PCA
-→ represents the records with fewer dimensions
+ ↓
+Represents Records
+with Fewer Dimensions
+
 
 K-Means
-→ creates the groups
+ ↓
+Creates Groups
 
-Original variables
-→ help explain the groups
+
+Original Variables
+ ↓
+Help Explain Groups
 ```
 
 The useful question is not only:
@@ -1271,44 +1274,55 @@ The useful question is:
 
 > What characteristics are common among the observations assigned to Cluster 0?
 
-That is how the cluster becomes understandable.
+This is the stage where a numerical cluster becomes an interpretable group.
 
 ---
 
-# Choosing Features Carefully
+# 24. Choosing Features Carefully
 
-Suppose I also have:
+Suppose the dataset also contains an outcome such as:
 
 ```text
 final_rental_decision
 ```
 
-I should not automatically add it to K-Means just because the column exists.
+I learned that I should not automatically include a variable in K-Means simply because it exists.
 
-First I ask:
+The question is:
 
-> Do I want this variable to influence how similarity between records is defined?
+> Do I want this variable to influence how similarity between observations is defined?
 
-If my objective is to discover groups based on profile, location and parking/traffic behavior, I can leave a target-like outcome outside the clustering features.
+If the objective is to discover groups based on profile, location, and parking behavior, a target-like outcome can be analyzed **after** clustering instead of being used to define the clusters.
 
-Then I can analyze it **after** K-Means:
+Conceptually:
 
 ```text
-K-Means creates clusters
-        ↓
-Then I analyze:
+Selected Features
+       ↓
+K-Means
+       ↓
+Clusters
+       ↓
+Analyze Other Variables
+Inside Each Cluster
+```
 
-How many people in each cluster
+For example:
+
+```text
+How many observations in each cluster
 show willingness to rent?
 ```
 
-The lesson is:
+The lesson I learned is:
 
-> **I choose K-Means features according to the objective of the segmentation, not simply because the columns are available.**
+> **K-Means features should be selected according to the objective of the segmentation, not simply because the columns are available.**
 
 ---
 
-# Saving the Results in Databricks
+# 25. Saving the Results in Databricks
+
+After generating the cluster assignments, I saved the result as a Delta table:
 
 ```python
 df_clusters.select(
@@ -1331,32 +1345,196 @@ prediction
 
 which contains the cluster assigned to each observation.
 
+The final ML pipeline was:
+
+```text
+mart_parqueo.ml_features_scaled
+        ↓
+PCA
+        ↓
+mart_parqueo.ml_features_pca
+        ↓
+K-Means
+        ↓
+mart_parqueo.ml_clusters
+```
+
 ---
 
-The three concepts I need to keep separate are:
+# 26. Sushi Example vs. My Thesis
+
+The relationship between the learning example and my implementation can be summarized as:
+
+```text
+SUSHI EXAMPLE
+
+Customer Data
+      ↓
+Feature Engineering
+      ↓
+StandardScaler
+      ↓
+PCA
+      ↓
+K-Means
+      ↓
+Customer Groups
+      ↓
+Interpret Original
+Customer Variables
+```
+
+and:
+
+```text
+ MY THESIS
+
+Parking-Demand Data
+      ↓
+Feature Engineering
+      ↓
+16 Features
+      ↓
+StandardScaler
+      ↓
+PCA (k=3)
+      ↓
+[PC1, PC2, PC3]
+      ↓
+K-Means
+      ↓
+prediction
+      ↓
+Interpret Original
+Parking-Demand Variables
+```
+
+The datasets are different, but the Machine Learning reasoning is similar.
+
+---
+
+# What I Learned
+
+Through this implementation I learned that:
+
+- K-Means is an **unsupervised learning algorithm**.
+- K-Means creates groups based on similarity in the selected feature space.
+- `K` in K-Means represents the number of clusters.
+- `k` in PCA and `k` in K-Means represent different concepts.
+- K-Means assigns observations according to their distance from cluster centroids.
+- A centroid represents the center of a cluster in the feature space.
+- K-Means is iterative: assignments and centroids are recalculated during training.
+- I can test several K values instead of assuming the number of clusters in advance.
+- The Silhouette Score can help compare clustering results.
+- A higher Silhouette Score among tested configurations does not prove that the selected K is universally optimal.
+- Cluster numbers are only identifiers.
+- K-Means creates the groups, but the original variables help me interpret them.
+- PCA is not mandatory before K-Means.
+- In my implementation, I used `[PC1, PC2, PC3]` as the input for K-Means.
+- Feature selection should follow the objective of the analysis.
+- Saving intermediate Delta tables helped me inspect and validate each stage independently.
+
+The three concepts I needed to keep separate were:
 
 ```text
 PCA
 → reduces dimensionality
 
+
 K-MEANS
 → groups similar records using
   distances to centroids
 
+
 SILHOUETTE
-→ evaluates cohesion inside clusters  and separation between clusters
+→ evaluates cohesion inside clusters
+  and separation between clusters
 ```
 
-And the two rules that helped me the most are:
+And the two rules that helped me the most were:
 
 ```text
-Assign a record to a cluster
-→ SMALLEST distance to the centroid
+Assign a Record
+      ↓
+Closest Centroid
+      ↓
+Cluster Assignment
 ```
+
+and:
 
 ```text
-Compare different K values
-→ generally look for the HIGHEST
-  Silhouette Score among those tested
+Compare Tested K Values
+      ↓
+Silhouette Score
+      ↓
+Evaluate the Resulting Clusterings
 ```
 
+---
+
+# Complete Machine Learning Flow
+
+The complete process documented in these learning notes is:
+
+```text
+Parking-Demand Data
+        ↓
+Feature Engineering
+        ↓
+10 Features
+        ↓
+VectorAssembler
+        ↓
+features_raw
+        ↓
+StandardScaler
+        ↓
+features_scaled
+        ↓
+PCA (k=3)
+        ↓
+pca_features
+[PC1, PC2, PC3]
+        ↓
+K-Means
+        ↓
+prediction
+        ↓
+Cluster Interpretation
+        ↓
+mart_parqueo.ml_clusters
+```
+
+---
+
+# Important Note
+
+This document describes a **learning implementation based on my academic project**.
+
+The sushi examples are simplified examples used to explain the concepts.
+
+The parking-demand sections describe how I applied the Machine Learning workflow to my thesis data.
+
+K-Means results should always be interpreted in the context of:
+
+```text
+Selected Features
+Data Quality
+Scaling
+Dimensionality Reduction
+Chosen K Values
+Evaluation Metric
+Dataset Size
+Analysis Objective
+```
+
+A clustering result does not automatically prove that the discovered groups represent fixed or universal categories in the real world.
+
+The purpose of this exercise was to learn how to build, evaluate, and interpret an unsupervised Machine Learning workflow using PySpark and Databricks.
+
+---
+
+⬅️ [Back to Machine Learning — PCA](Machine_Learning_PCA.md)
+
+⬅️ [Back to main README](README.md)
