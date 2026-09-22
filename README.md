@@ -6,7 +6,7 @@ I created it while studying for my Master's in Big Data & Artificial Intelligenc
 
 The purpose of this repository is **not to present myself as a Databricks expert**, but to document what I am learning through hands-on practice and to create notes and examples that may also be useful for other people learning these technologies.
 
-> 📚 **Learning repository**
+> **Learning repository**
 >
 > The examples in this repository reflect my learning process.  
 > They may evolve as I continue studying, testing new approaches, and improving my understanding of Databricks and the modern data stack.
